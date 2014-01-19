@@ -7,8 +7,9 @@ Created on Jan 18, 2014
 from pulp import LpVariable, lpSum, LpInteger, LpStatusOptimal, LpProblem
 from pulp import LpMinimize, LpMaximize,LpStatus
 import random
-from coopr.pyomo import AbstractModel, Param, Set, Var, Constraint, summation, maximize, value
-from coopr.pyomo import NonNegativeReals, NonNegativeIntegers, Reals, Binary, Objective 
+from coopr.pyomo import AbstractModel, Param, Set, Var, Constraint, summation
+from coopr.pyomo import maximize, value, NonNegativeReals, NonNegativeIntegers
+from coopr.pyomo import  Reals, Binary, Objective 
 from coopr.opt import SolverFactory, SolverManagerFactory
 
 def GenerateRandomMILP(VARIABLES, CONSTRAINTS, density = 0.2,
@@ -51,7 +52,8 @@ LpRelaxation += (lpSum(OBJ[j]*intvars[j] for j in INTVARS)
                      + lpSum(OBJ[j]*convars[j] for j in CONVARS)), "Objective"
 for i in CONS:
     LpRelaxation += (lpSum(MAT[i, j]*intvars[j] for j in INTVARS)
-                         + lpSum(MAT[i, j]*convars[j] for j in CONVARS) == RHS[i]), i
+                     + lpSum(MAT[i, j]*convars[j] for j in CONVARS) 
+                     == RHS[i]), i
 # Solve the LP relaxation
 status = LpRelaxation.solve()
 print LpStatus[status]
@@ -80,7 +82,8 @@ Master.conIndices = Set(initialize=CONVARS)
 Master.intPartList = Set()
 Master.dualVarSet = Master.constraintSet * Master.intPartList
 Master.theta = Var([1], domain=Reals, bounds = (None, None))
-Master.intVars = Var(Master.intIndices, domain=NonNegativeIntegers, bounds=(0, 2))
+Master.intVars = Var(Master.intIndices, domain=NonNegativeIntegers, 
+                     bounds=(0, 2))
 Master.dualVars = Var(Master.dualVarSet, domain=Reals, bounds = (None, None))
 
 def objective_rule(model):
@@ -91,7 +94,8 @@ def theta_constraint_rule(model, k):
     return (model.theta[1] <=
             sum(OBJ[j]*model.int_part_list[k][j] for j in INTVARS)
             - sum(OBJ[j]*model.intVars[j] for j in INTVARS)
-            + sum(MAT[(i, j)]*model.dualVars[(i, k)]*(model.intVars[j] - model.int_part_list[k][j]) 
+            + sum(MAT[(i, j)]*model.dualVars[(i, k)]*(model.intVars[j] - 
+                                                    model.int_part_list[k][j]) 
                 for j in INTVARS for i in CONS))
 Master.theta_constraint = Constraint(Master.intPartList)
 
@@ -115,8 +119,13 @@ for i in range(max_iters):
     print 'Theta:', instance.theta[1].value
     if instance.theta[1].value < .01:
         print "Finished!"
-        for j in Master.int_part_list:
-            print j
+        for int_part in Master.int_part_list:
+            print 'Solution:', int_part
+            print 'Right-hand side: [', 
+            for k in CONS:
+                print sum(MAT[(k, l)]*int_part[l] 
+                          for l in INTVARS),
+            print ']' 
         break
     if debug_print:
         for i in instance.dualVars:
@@ -124,10 +133,12 @@ for i in range(max_iters):
         print instance.dualVars[(0,0)].value
         for k in range(len(Master.int_part_list)):
             for j in CONVARS:
-                print j, k, OBJ[j], sum(MAT[(i, j)]*instance.dualVars[(i, k)].value for i in CONS)
+                print j, k, OBJ[j], 
+                print sum(MAT[(i, j)]*instance.dualVars[(i, k)].value 
+                          for i in CONS)
         for k in range(len(Master.int_part_list)):
             for j in INTVARS:
-                print k, sum((MAT[(i, j)])*instance.dualVars[(i, k)].value - OBJ[j]
-                             for i in CONS),
-    Master.int_part_list.append(dict((i, round(instance.intVars[i].value)) for i in INTVARS))
-        
+                print k, sum((MAT[(i, j)])*instance.dualVars[(i, k)].value - 
+                             OBJ[j] for i in CONS),
+    Master.int_part_list.append(dict((i, round(instance.intVars[i].value)) 
+                                     for i in INTVARS))
