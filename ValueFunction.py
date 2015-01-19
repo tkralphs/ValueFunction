@@ -83,7 +83,7 @@ Master.intPartList = Set()
 Master.dualVarSet = Master.constraintSet * Master.intPartList
 Master.theta = Var([1], domain=Reals, bounds = (None, None))
 Master.intVars = Var(Master.intIndices, domain=NonNegativeIntegers, 
-                     bounds=(0, 2))
+                     bounds=(0, 10))
 Master.dualVars = Var(Master.dualVarSet, domain=Reals, bounds = (None, None))
 
 def objective_rule(model):
