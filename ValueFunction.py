@@ -105,8 +105,6 @@ Master.dual_constraint = Constraint(Master.conIndices, Master.intPartList,
 Master.int_part_list = [dict((i, 0) for i in INTVARS)]
 
 debug_print = False
-#opt = SolverFactory("asl")
-#opt.set_options('solver=/Users/ted/bin/couenne')
 opt = SolverFactory("couenne")
 for i in range(max_iters):
     Master.intPartList.add(i)
