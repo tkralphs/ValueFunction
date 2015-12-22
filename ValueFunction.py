@@ -7,10 +7,7 @@ Created on Jan 18, 2014
 from pulp import LpVariable, lpSum, LpInteger, LpStatusOptimal, LpProblem
 from pulp import LpMinimize, LpMaximize,LpStatus
 import random
-from coopr.pyomo import AbstractModel, Param, Set, Var, Constraint, summation
-from coopr.pyomo import maximize, value, NonNegativeReals, NonNegativeIntegers
-from coopr.pyomo import  Reals, Binary, Objective 
-from coopr.opt import SolverFactory, SolverManagerFactory
+from pyomo.environ import *
 
 def GenerateRandomMILP(VARIABLES, CONSTRAINTS, density = 0.2,
                        maxObjCoeff = 10, maxConsCoeff = 10,
@@ -81,43 +78,46 @@ Master.constraintSet = Set(initialize=CONS)
 Master.conIndices = Set(initialize=CONVARS)
 Master.intPartList = Set()
 Master.dualVarSet = Master.constraintSet * Master.intPartList
-Master.theta = Var([1], domain=Reals, bounds = (None, None))
+Master.theta = Var(domain=Reals, bounds = (None, None))
 Master.intVars = Var(Master.intIndices, domain=NonNegativeIntegers, 
                      bounds=(0, 10))
 Master.dualVars = Var(Master.dualVarSet, domain=Reals, bounds = (None, None))
 
 def objective_rule(model):
-    return model.theta[1]
-Master.objective = Objective(sense=maximize)
+    return model.theta
+Master.objective = Objective(rule=objective_rule, sense=maximize)
 
 def theta_constraint_rule(model, k):
-    return (model.theta[1] <=
+    return (model.theta <=
             sum(OBJ[j]*model.int_part_list[k][j] for j in INTVARS)
             - sum(OBJ[j]*model.intVars[j] for j in INTVARS)
             + sum(MAT[(i, j)]*model.dualVars[(i, k)]*(model.intVars[j] - 
                                                     model.int_part_list[k][j]) 
                 for j in INTVARS for i in CONS))
-Master.theta_constraint = Constraint(Master.intPartList)
+Master.theta_constraint = Constraint(Master.intPartList,
+                                     rule=theta_constraint_rule)
 
 def dual_constraint_rule(model, j, k):
     return (sum(MAT[(i, j)]*model.dualVars[(i, k)] for i in CONS) <= OBJ[j])
-Master.dual_constraint = Constraint(Master.conIndices, Master.intPartList)
+Master.dual_constraint = Constraint(Master.conIndices, Master.intPartList,
+                                    rule=dual_constraint_rule)
 
 Master.int_part_list = [dict((i, 0) for i in INTVARS)]
 
 debug_print = False
-opt = SolverFactory("asl")
-opt.set_options('solver=/Users/ted/bin/couenne')
+#opt = SolverFactory("asl")
+#opt.set_options('solver=/Users/ted/bin/couenne')
+opt = SolverFactory("couenne")
 for i in range(max_iters):
     Master.intPartList.add(i)
-    instance = Master.create()
+    instance = Master.create_instance()
     results = opt.solve(instance)
-    instance.load(results)
+    instance.solutions.load_from(results)
     print 'Solution in iteration', i 
     for j in instance.intVars:
         print j, instance.intVars[j].value
-    print 'Theta:', instance.theta[1].value
-    if instance.theta[1].value < .01:
+    print 'Theta:', instance.theta.value
+    if instance.theta.value < .01:
         print "Finished!"
         for int_part in Master.int_part_list:
             print 'Solution:', int_part
