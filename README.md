@@ -9,4 +9,4 @@ To run the code, you must install [Pyomo](http://pyomo.org) with
 pip install pyomo
 ```
 
-and installing Bonmin from [COIN-OR](https://projects.coin-or.org/Bonmin).
+and install [Bonmin](https://github.com/coin-or/Bonmin) from [COIN-OR](https://www.coin-or.org).
