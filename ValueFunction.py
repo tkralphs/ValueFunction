@@ -53,11 +53,11 @@ for i in CONS:
                      == RHS[i]), i
 # Solve the LP relaxation
 status = LpRelaxation.solve()
-print LpStatus[status]
+print(LpStatus[status])
 for i in INTVARS:
-    print i, intvars[i].varValue
+    print(i, intvars[i].varValue)
 for i in CONVARS:
-    print i, convars[i].varValue
+    print(i, convars[i].varValue)
     
 intvars = LpVariable.dicts("x", INTVARS, 0, 100, LpInteger)
 IpRestriction = LpProblem("relax", LpMinimize)
@@ -66,17 +66,17 @@ for i in CONS:
     IpRestriction += lpSum(MAT[i, j]*intvars[j] for j in INTVARS) == RHS[i], i
 # Solve the LP relaxation
 status = IpRestriction.solve()
-print LpStatus[status]
+print(LpStatus[status])
 for i in INTVARS:
-    print i, intvars[i].varValue
+    print(i, intvars[i].varValue)
 
 max_iters = 1000
-    
+listTemp = [] 
 Master = AbstractModel()
 Master.intIndices = Set(initialize=INTVARS)
 Master.constraintSet = Set(initialize=CONS)
 Master.conIndices = Set(initialize=CONVARS)
-Master.intPartList = Set()
+Master.intPartList = Set(initialize=listTemp)
 Master.dualVarSet = Master.constraintSet * Master.intPartList
 Master.theta = Var(domain=Reals, bounds = (None, None))
 Master.intVars = Var(Master.intIndices, domain=NonNegativeIntegers, 
@@ -107,36 +107,36 @@ Master.int_part_list = [dict((i, 0) for i in INTVARS)]
 debug_print = False
 opt = SolverFactory("couenne")
 for i in range(max_iters):
-    Master.intPartList.add(i)
+    listTemp.append(i)
     instance = Master.create_instance()
     results = opt.solve(instance)
     instance.solutions.load_from(results)
-    print 'Solution in iteration', i 
+    print('Solution in iteration', i) 
     for j in instance.intVars:
-        print j, instance.intVars[j].value
-    print 'Theta:', instance.theta.value
+        print(j, instance.intVars[j].value)
+    print('Theta:', instance.theta.value)
     if instance.theta.value < .01:
-        print "Finished!"
+        print("Finished!")
         for int_part in Master.int_part_list:
-            print 'Solution:', int_part
-            print 'Right-hand side: [', 
+            print('Solution:', int_part)
+            print('Right-hand side: [',) 
             for k in CONS:
-                print sum(MAT[(k, l)]*int_part[l] 
-                          for l in INTVARS),
-            print ']' 
+                print(sum(MAT[(k, l)]*int_part[l] 
+                          for l in INTVARS),)
+            print(']') 
         break
     if debug_print:
         for i in instance.dualVars:
-            print i, instance.dualVars[i].value
-        print instance.dualVars[(0,0)].value
+            print(i, instance.dualVars[i].value)
+        print(instance.dualVars[(0,0)].value)
         for k in range(len(Master.int_part_list)):
             for j in CONVARS:
-                print j, k, OBJ[j], 
-                print sum(MAT[(i, j)]*instance.dualVars[(i, k)].value 
-                          for i in CONS)
+                print(j, k, OBJ[j],) 
+                print(sum(MAT[(i, j)]*instance.dualVars[(i, k)].value 
+                          for i in CONS))
         for k in range(len(Master.int_part_list)):
             for j in INTVARS:
-                print k, sum((MAT[(i, j)])*instance.dualVars[(i, k)].value - 
-                             OBJ[j] for i in CONS),
+                print(k, sum((MAT[(i, j)])*instance.dualVars[(i, k)].value - 
+                             OBJ[j] for i in CONS),)
     Master.int_part_list.append(dict((i, round(instance.intVars[i].value)) 
                                      for i in INTVARS))
